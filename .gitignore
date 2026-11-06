@@ -1,0 +1,25 @@
+# Environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Data: downloaded by data/get_data.py, never committed
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Models are generated, not authored
+models/*
+!models/.gitkeep
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Secrets
+.env
+
+# OS and editor
+Thumbs.db
+.DS_Store
+.vscode/settings.json
