@@ -8,7 +8,7 @@
 | **Left out** | [Trips removed and why, with how many rows each step removes] |
 | **Positive rate** | [% of trips that are positive, after the filters] |
 | **Decision it supports** | The dispatcher, when receiving the prediction, sends a warning to the customer if their trip is going to crawl so that they can plan ahead. |
-| **Costly mistake** | [Which error is worse: missing a crawl or a needless warning, and why] |
+| **Costly mistake** | Both missing a crawl and a needless warning would be costly mistakes to consider. If the user is sent a warning for crawl every time they go on a trip but ends up being a false alarm, they would lose trust in the system, in the long run it would cause more dissatisfaction. On the other side, not being warned of a crawl is the most "impactful" of the mistakes, since an unexpected delay may cause anger from the customer. |
 | **Metric** | [How you measure the model] |
 | **Baseline to beat** | [The best baseline score, filled in at the end] |
 
