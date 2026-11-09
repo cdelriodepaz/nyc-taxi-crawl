@@ -20,8 +20,8 @@
 
 | **Metric** | The model can be measured trough various different metrics. Recall: % of warned users out of all of the crawl trips that took place. Precision: % of correct warnings out of all users that have crawled trough traffic. |
 
-| **Baseline to beat** | [The best baseline score, filled in at the end] |
+| **Baseline to beat** | Depth-2 decision tree trained on May and scored on June (inputs: pickup hour, day of week and trip_distance; random_state=42). It flags a trip when its predicted probability is above May's positive rate (19.7%). Result on June: PR AUC 0.339, lift 1.78 (June positive rate is 19.0%), precision 0.315, recall 0.833. In practice the tree only used trip_distance: very short trips crawl most often. The other rungs scored lower: always predicting no crawl has lift 1.00, and a hand-written rule (pickup 10:00-18:59 in the 10 zones with the highest crawl rate in May) has lift 1.47 (precision 0.445, recall 0.349). |
 
 ## Changes
 
-- *YYYY-MM-DD: what changed, and why.*
+- 2026-11-09: filled in Baseline to beat with the results of the baseline ladder, scored on June.
