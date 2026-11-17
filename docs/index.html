@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>The Crawl · NYC Taxi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400..700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a taxi-meter header with tab bar, then one tab panel at a time in a 1120px column. */
+:root {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --surface-2: #E9EBEF;
+  --ink: #18202C;
+  --ink-2: #4B5563;
+  --ink-3: #6B7280;
+  --line: #D5D9E0;
+  --taxi: #F5B800;
+  --taxi-ink: #18202C;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --pos: #eb6834;
+  --neg: #2a78d6;
+  --muted-mark: #A3A9B4;
+  --none: #DADDE3;
+  --seq-0: #cde2fb; --seq-1: #9ec5f4; --seq-2: #6da7ec; --seq-3: #3987e5;
+  --seq-4: #2a78d6; --seq-5: #1c5cab; --seq-6: #104281; --seq-7: #0d366b;
+  --good: #1a7f4b; --bad: #b4232a;
+  --head-bg: #18202C;
+  --head-line: #2E3746;
+  --font-display: 'Oswald', 'Arial Narrow', Arial, sans-serif;
+  --font-body: 'Public Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161D; --surface: #1B212B; --surface-2: #252C38; --ink: #ECEEF2; --ink-2: #B8BEC9; --ink-3: #8F97A5;
+    --line: #333C4A; --taxi: #F5B800; --taxi-ink: #12161D; --series-1: #3987e5; --series-2: #d95926;
+    --pos: #e07040; --neg: #4a90e8; --muted-mark: #6B7280; --none: #2C3440;
+    --seq-0: #13304f; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #256abf;
+    --seq-4: #3987e5; --seq-5: #6da7ec; --seq-6: #9ec5f4; --seq-7: #cde2fb;
+    --good: #4cc488; --bad: #f07178;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161D; --surface: #1B212B; --surface-2: #252C38; --ink: #ECEEF2; --ink-2: #B8BEC9; --ink-3: #8F97A5;
+  --line: #333C4A; --taxi: #F5B800; --taxi-ink: #12161D; --series-1: #3987e5; --series-2: #d95926;
+  --pos: #e07040; --neg: #4a90e8; --muted-mark: #6B7280; --none: #2C3440;
+  --seq-0: #13304f; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #256abf;
+  --seq-4: #3987e5; --seq-5: #6da7ec; --seq-6: #9ec5f4; --seq-7: #cde2fb;
+  --good: #4cc488; --bad: #f07178;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--head-bg); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.15; text-wrap: balance; margin: 0; letter-spacing: 0.2px; }
+h2 { font-size: clamp(26px, 4vw, 36px); }
+h3 { font-size: 21px; }
+p { margin: 0; }
+.prose { max-width: 66ch; color: var(--ink-2); }
+.prose b, .prose strong { color: var(--ink); }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
+a { color: var(--series-1); }
+:focus-visible { outline: 3px solid var(--taxi); outline-offset: 2px; }
+
+/* header */
+header.top { background: var(--head-bg); color: #F3F4F6; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; }
+.checker { height: 10px; background-image: linear-gradient(45deg, #F5B800 25%, transparent 25%, transparent 75%, #F5B800 75%), linear-gradient(45deg, #F5B800 25%, #18202C 25%, #18202C 75%, #F5B800 75%); background-size: 20px 20px; background-position: 0 0, 10px 10px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-block: 14px 8px; }
+.brand h1 { font-size: 28px; color: var(--taxi); text-transform: uppercase; letter-spacing: 1.5px; }
+.brand .sub { color: #B8BEC9; font-size: 14px; }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 0; scrollbar-width: thin; }
+nav.tabs a { color: #C9CED7; text-decoration: none; font-family: var(--font-display); font-size: 16px; letter-spacing: 0.6px; text-transform: uppercase; padding: 10px 12px 12px; border-bottom: 3px solid transparent; white-space: nowrap; }
+nav.tabs a:hover { color: #FFFFFF; }
+nav.tabs a[aria-current="page"] { color: #FFFFFF; border-bottom-color: var(--taxi); }
+
+main { padding-block: 32px 64px; }
+section.panel { display: flex; flex-direction: column; gap: 28px; }
+.eyebrow { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 2px; font-size: 14px; color: var(--ink-3); }
+.head { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.g4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+/* meter readout: the hero numbers */
+.meter { background: var(--head-bg); color: #F3F4F6; border-radius: 12px; padding: 20px; display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.meter .cell { padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; border-left: 2px solid var(--head-line); }
+.meter .val { font-family: var(--font-mono); font-size: 34px; font-weight: 600; color: var(--taxi); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.meter .lab { font-size: 14px; color: #B8BEC9; }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .v { font-family: var(--font-mono); font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .l { font-size: 14px; color: var(--ink-2); }
+
+.steps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); counter-reset: step; }
+.steps a { text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.steps a:hover { border-color: var(--series-1); }
+.steps .n { font-family: var(--font-mono); font-size: 13px; color: var(--ink-3); }
+.steps .t { font-family: var(--font-display); font-size: 19px; }
+.steps .d { font-size: 14px; color: var(--ink-2); }
+
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 13.5px; }
+tr.hl td { background: color-mix(in srgb, var(--taxi) 22%, transparent); }
+.scroll { overflow-x: auto; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); }
+.pill.yes { background: color-mix(in srgb, var(--good) 15%, transparent); border-color: color-mix(in srgb, var(--good) 45%, transparent); color: var(--good); }
+.pill.no { background: color-mix(in srgb, var(--bad) 12%, transparent); border-color: color-mix(in srgb, var(--bad) 40%, transparent); color: var(--bad); }
+
+/* controls */
+label.ctl { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink-2); min-width: 0; }
+select, input[type="number"], input[type="time"] { font: inherit; font-weight: 400; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; }
+input[type="range"] { width: 100%; accent-color: var(--series-1); }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; }
+.seg button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink-2); padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12); font-weight: 600; }
+button.btn { font: inherit; font-size: 14px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+button.btn:hover { border-color: var(--series-1); }
+button.btn.primary { background: var(--taxi); color: var(--taxi-ink); border-color: var(--taxi); }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.toggle-list { display: flex; flex-direction: column; gap: 8px; }
+.toggle-list label { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; cursor: pointer; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.toggle-list input { margin-top: 4px; accent-color: var(--series-1); width: 18px; height: 18px; flex: none; }
+.toggle-list .why { display: block; color: var(--ink-3); font-size: 13.5px; }
+
+/* charts */
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--ink-3); font-family: var(--font-body); font-size: 12px; }
+.chart .axis line, .chart .axis path { stroke: var(--line); }
+.chart .grid line { stroke: var(--line); stroke-opacity: 0.6; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 4px; border-radius: 2px; display: inline-block; }
+.legend i.sw { width: 14px; height: 14px; border-radius: 3px; }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--bg); font-size: 13px; padding: 8px 10px; border-radius: 8px; max-width: 260px; line-height: 1.4; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+.tip b { color: var(--taxi); }
+.map-wrap { position: relative; }
+.map-wrap svg path.zone { stroke: var(--surface); stroke-width: 0.5; cursor: pointer; }
+.map-wrap svg path.zone:hover, .map-wrap svg path.zone.sel { stroke: var(--taxi); stroke-width: 2; }
+.scale-key { display: flex; flex-wrap: wrap; gap: 0; align-items: stretch; font-size: 12px; color: var(--ink-3); }
+.scale-key div { display: flex; flex-direction: column; gap: 3px; min-width: 44px; }
+.scale-key div i { height: 12px; display: block; }
+
+/* playground */
+.gauge { display: flex; flex-direction: column; gap: 10px; }
+.gauge .p { font-family: var(--font-mono); font-size: 56px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.bar-track { position: relative; height: 14px; background: var(--surface-2); border-radius: 7px; overflow: hidden; }
+.bar-fill { position: absolute; inset: 0 auto 0 0; background: var(--series-1); border-radius: 7px; transition: width 200ms ease; }
+.bar-thr { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.contrib { display: flex; flex-direction: column; gap: 8px; }
+.contrib .r { display: grid; grid-template-columns: minmax(110px, 180px) 1fr 64px; gap: 10px; align-items: center; font-size: 14px; }
+.contrib .lane { position: relative; height: 16px; }
+.contrib .lane .mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--ink-3); }
+.contrib .lane .b { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.contrib .v { text-align: right; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.presets button { font: inherit; font-size: 13.5px; border: 1px dashed var(--line); background: transparent; color: var(--ink-2); padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.presets button:hover { border-color: var(--series-1); color: var(--ink); }
+
+pre.code { background: var(--head-bg); border: 1px solid var(--line); color: #E6E9EE; border-radius: 10px; padding: 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; margin: 0; }
+.note { font-size: 13.5px; color: var(--ink-3); }
+.callout { border-left: 4px solid var(--taxi); background: var(--surface); padding: 14px 16px; border-radius: 0 10px 10px 0; color: var(--ink-2); }
+.loading { padding: 40px 0; color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 520px) { .meter .val { font-size: 28px; } .gauge .p { font-size: 44px; } .contrib .r { grid-template-columns: 100px 1fr 54px; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="checker" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="brand">
+      <h1>The Crawl</h1>
+      <span class="sub">Will this New York taxi trip crawl through traffic? · Machine Learning, Project 1, question C · UMT</span>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#overview">Overview</a>
+      <a href="#question">Question</a>
+      <a href="#cleaning">Cleaning</a>
+      <a href="#explore">Explore</a>
+      <a href="#model">Model</a>
+      <a href="#try">Try a trip</a>
+      <a href="#threshold">Threshold</a>
+      <a href="#results">Results</a>
+      <a href="#reproduce">Reproduce</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- OVERVIEW -->
+<section class="panel" id="p-overview" data-tab="overview">
+  <div class="head">
+    <span class="eyebrow">Overview</span>
+    <h2>At pickup, predict whether each trip will crawl through traffic, so that the dispatcher can warn the passenger.</h2>
+    <p class="prose">A trip <b>crawls</b> when its average speed is under 6 mph. We trained on May 2026, made every decision on June, and scored July once at the very end. Every number and every interactive part of this page comes from our repository: the same cleaning (<code>src/data.py</code>), the same features and the same fitted logistic regression (<code>src/pipeline.py</code>).</p>
+  </div>
+  <div class="meter" role="group" aria-label="Headline figures">
+    <div class="cell"><span class="val">600,000</span><span class="lab">yellow taxi trips, May to July 2026</span></div>
+    <div class="cell"><span class="val">18.5%</span><span class="lab">of valid trips crawl (under 6 mph)</span></div>
+    <div class="cell"><span class="val">0.627</span><span class="lab">PR AUC on July, scored once (baseline 0.327)</span></div>
+    <div class="cell"><span class="val">78% · 47%</span><span class="lab">of July crawls warned · of warnings correct</span></div>
+  </div>
+  <div class="head"><h3>How the project is built</h3></div>
+  <div class="steps">
+    <a href="#question"><span class="n">01-frame.ipynb</span><span class="t">Frame the question</span><span class="d">The target, the moment of prediction, and what the model may see.</span></a>
+    <a href="#cleaning"><span class="n">02-clean-and-split.ipynb</span><span class="t">Clean and split</span><span class="d">Five fixed rules, flags for odd cases, and a split by month.</span></a>
+    <a href="#model"><span class="n">03-features.ipynb</span><span class="t">Features and model</span><span class="d">Feature groups added one at a time, judged on June.</span></a>
+    <a href="#results"><span class="n">04-evaluate.ipynb</span><span class="t">Evaluate</span><span class="d">Threshold from costs, reliability, slices, and July once.</span></a>
+  </div>
+  <div class="callout">To interact: <a href="#cleaning">switch the cleaning rules</a> on and off, <a href="#explore">hover the zone map</a>, <a href="#try">build a trip and get the model’s prediction</a>, or <a href="#threshold">move the warning threshold</a> and watch precision, recall and cost change.</div>
+</section>
+
+<!-- QUESTION -->
+<section class="panel" id="p-question" data-tab="question" hidden>
+  <div class="head">
+    <span class="eyebrow">01 · Frame</span>
+    <h2>Turning “stuck in traffic” into a number</h2>
+    <p class="prose">The data has no speed column. We build it from three columns, and label the trip 1 if it averaged under 6 mph. Try it with any trip.</p>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Label a trip yourself</h3>
+      <div class="grid g3" style="gap:12px;">
+        <label class="ctl" for="q-start">Pickup time<input type="time" id="q-start" value="09:00"></label>
+        <label class="ctl" for="q-end">Drop-off time<input type="time" id="q-end" value="09:30"></label>
+        <label class="ctl" for="q-dist">Distance (miles)<input type="number" id="q-dist" value="2" min="0" max="40" step="0.1"></label>
+      </div>
+      <div class="grid g3" style="gap:12px;">
+        <div class="stat"><span class="v" id="q-dur">30 min</span><span class="l">duration = drop-off − pickup</span></div>
+        <div class="stat"><span class="v" id="q-speed">4.0 mph</span><span class="l">speed = miles ÷ hours</span></div>
+        <div class="stat"><span class="v" id="q-label">1</span><span class="l" id="q-label-text">is_crawl: under 6 mph</span></div>
+      </div>
+      <p class="note">This label uses the drop-off time, which only exists once the trip has ended. It is the answer the model learns from, so the model itself may never see it.</p>
+    </div>
+    <div class="card">
+      <h3>The problem card in four lines</h3>
+      <table>
+        <tr><th>Predict at</th><td>Pickup, the moment the passenger gets in</td></tr>
+        <tr><th>One row</th><td>One taxi trip</td></tr>
+        <tr><th>Decision</th><td>The dispatcher warns only passengers whose trip is predicted to crawl</td></tr>
+        <tr><th>Costly mistake</th><td>A missed crawl, assumed 3 times as costly as a needless warning</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>What the model may see</h3>
+    <p class="prose">A column is an input only if its value exists at pickup. Everything settled during or after the trip would leak the answer.</p>
+    <div class="scroll">
+      <table>
+        <tr><th>Column</th><th>Known at pickup?</th><th>Why</th></tr>
+        <tr><td><code>tpep_pickup_datetime</code></td><td><span class="pill yes">Allowed</span></td><td>Gives the hour and the day of the week</td></tr>
+        <tr><td><code>PULocationID</code>, <code>DOLocationID</code></td><td><span class="pill yes">Allowed</span></td><td>The passenger says where they are going</td></tr>
+        <tr><td><code>trip_distance</code></td><td><span class="pill yes">Allowed, with a caveat</span></td><td>Treated as the planned route a routing app gives at pickup. It is the distance actually driven, so a detour leaks a little</td></tr>
+        <tr><td><code>passenger_count</code>, <code>VendorID</code></td><td><span class="pill yes">Allowed</span></td><td>Tested, then dropped: they added only 0.002 PR AUC</td></tr>
+        <tr><td><code>tpep_dropoff_datetime</code></td><td><span class="pill no">Never</span></td><td>It builds the answer</td></tr>
+        <tr><td><code>fare_amount</code></td><td><span class="pill no">Never</span></td><td>The meter charges for waiting, so a high fare gives the jam away</td></tr>
+        <tr><td>Fees, tip, total, <code>RatecodeID</code>, <code>payment_type</code></td><td><span class="pill no">Never</span></td><td>Settled at the end of the trip</td></tr>
+        <tr><td><code>request_source</code></td><td><span class="pill no">Never</span></td><td>Undocumented, empty in all of May and filled in about 27% of June and July</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- CLEANING -->
+<section class="panel" id="p-cleaning" data-tab="cleaning" hidden>
+  <div class="head">
+    <span class="eyebrow">02 · Clean and split</span>
+    <h2>Which trips can be labelled at all?</h2>
+    <p class="prose">Some trips give a speed that means nothing. Switch each rule off to see what it protects. These are the exact rules in <code>load_trips()</code>, applied to all 600,000 raw trips.</p>
+  </div>
+  <div class="grid g2">
+    <div class="toggle-list" id="rules">
+      <label><input type="checkbox" checked data-i="0"><span>Duration at least 1 minute<span class="why">Meters switched on and off; a 0-minute trip gives an infinite speed.</span></span></label>
+      <label><input type="checkbox" checked data-i="1"><span>Duration at most 120 minutes<span class="why">Meters left running, up to 71 hours, look like crawls that never happened.</span></span></label>
+      <label><input type="checkbox" checked data-i="2"><span>Distance above 0 miles<span class="why">A taxi that never moved gets a speed of 0 and is labelled a crawl.</span></span></label>
+      <label><input type="checkbox" checked data-i="3"><span>Distance at most 40 miles<span class="why">Absurd values, up to 317,017 miles.</span></span></label>
+      <label><input type="checkbox" checked data-i="4"><span>Speed under 70 mph<span class="why">Each value plausible alone, the combination impossible (up to 534 mph).</span></span></label>
+    </div>
+    <div class="card">
+      <div class="grid g2" style="gap:12px;">
+        <div class="stat"><span class="v" id="c-kept">570,327</span><span class="l">trips kept</span></div>
+        <div class="stat"><span class="v" id="c-rate">18.5%</span><span class="l">of kept trips labelled as crawls</span></div>
+      </div>
+      <svg class="chart" id="c-chart" viewBox="0 0 480 150" role="img" aria-label="Share of trips labelled as crawls with the selected rules, against the full rule set"></svg>
+      <p class="note" id="c-msg">All five rules on: this is the data the model is trained and judged on.</p>
+    </div>
+  </div>
+  <div class="callout"><b>The decision we are proudest of.</b> Switch off “Distance above 0 miles”: the crawl rate jumps from 18.5% to 20.6%, because about 15,000 trips where the taxi never moved would be labelled as crawls. Nothing in the code warns about it.</div>
+  <div class="card">
+    <h3>Odd cases we kept and flagged</h3>
+    <div class="scroll">
+      <table>
+        <tr><th>Problem (May)</th><th>Decision</th><th>Why</th></tr>
+        <tr><td>Flex fares, <code>payment_type</code> 0 (25% of valid trips)</td><td>Kept</td><td>The dispatcher faces them in practice. They crawl less (11.5% against 20.8%) because they are longer</td></tr>
+        <tr><td>Negative fare or total (713)</td><td>Flagged</td><td>Refunds and disputes. Time and distance still look plausible, and no amount is an input</td></tr>
+        <tr><td>Unknown zones 264 and 265</td><td>Flagged</td><td>“Unknown” is one more zone category</td></tr>
+        <tr><td>Non-standard fares, <code>RatecodeID</code> not 1</td><td>Flagged</td><td>Real trips; the rate code is settled at the end, so it is never an input</td></tr>
+        <tr><td><code>passenger_count</code> missing or 0</td><td>Flagged</td><td>Would be imputed with the May median inside the pipeline; the final model does not use it</td></tr>
+        <tr><td>Two trips picked up in April</td><td>Dropped</td><td>They belong to no split</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>The split: train on the past, judge on the future</h3>
+    <div class="grid g3" style="gap:12px;">
+      <div class="stat"><span class="v">May · 19.7%</span><span class="l">Train, 190,878 trips. All exploring happens here.</span></div>
+      <div class="stat"><span class="v">June · 19.0%</span><span class="l">Validation, 190,003 trips. Every decision is made here.</span></div>
+      <div class="stat"><span class="v">July · 16.8%</span><span class="l">Test, 189,444 trips. Scored once, at the end.</span></div>
+    </div>
+    <p class="note">The percentage is the share of trips that crawl in each month. Crawls get rarer as the summer goes on, so precision measured on June is a little optimistic for July.</p>
+  </div>
+</section>
+
+<!-- EXPLORE -->
+<section class="panel" id="p-explore" data-tab="explore" hidden>
+  <div class="head">
+    <span class="eyebrow">02 · Analysis on May</span>
+    <h2>Where and when trips crawl</h2>
+    <p class="prose">Share of May pickups that crawl, by zone. Choose a time of day, hover a zone for its numbers, and click it to use it as the pickup in <a href="#try">Try a trip</a>.</p>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <div class="seg" id="band" role="group" aria-label="Time of day">
+        <button type="button" data-b="all" aria-pressed="true">All day</button>
+        <button type="button" data-b="night" aria-pressed="false">00–06</button>
+        <button type="button" data-b="morning" aria-pressed="false">07–09</button>
+        <button type="button" data-b="day" aria-pressed="false">10–18</button>
+        <button type="button" data-b="evening" aria-pressed="false">19–23</button>
+      </div>
+      <span class="note" id="map-sel">Click a zone to select it.</span>
+    </div>
+    <div class="map-wrap"><svg class="chart" id="map" viewBox="0 0 800 760" role="img" aria-label="Map of New York taxi zones coloured by the share of May pickups that crawl"></svg></div>
+    <div class="scale-key" id="map-key" aria-hidden="true"></div>
+    <p class="note">Grey: fewer than 100 May pickups in that time band, too few for a reliable rate.</p>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>By hour of pickup</h3>
+      <div class="legend"><span><i style="background:var(--series-1)"></i>May (train)</span><span><i style="background:var(--series-2)"></i>June (validation)</span></div>
+      <svg class="chart" id="hour-chart" viewBox="0 0 480 260" role="img" aria-label="Share of trips that crawl by hour of pickup, May and June"></svg>
+      <p class="note">Under 7% at night, around 30% from late morning to late afternoon. The two months have the same shape.</p>
+    </div>
+    <div class="card">
+      <h3>By day of the week</h3>
+      <div class="legend"><span><i class="sw" style="background:var(--series-1)"></i>May (train)</span><span><i class="sw" style="background:var(--series-2)"></i>June (validation)</span></div>
+      <svg class="chart" id="day-chart" viewBox="0 0 480 260" role="img" aria-label="Share of trips that crawl by day of the week, May and June"></svg>
+      <p class="note">Tuesday to Thursday are the worst days, Sunday the best.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Which trips crawl? (May)</h3>
+    <div class="scroll"><table>
+      <tr><th>Trip</th><th class="num">Share that crawls</th></tr>
+      <tr><td>Under half a mile</td><td class="num">57%</td></tr>
+      <tr><td>Within Manhattan</td><td class="num">23.5%</td></tr>
+      <tr><td>Across boroughs</td><td class="num">3.7%</td></tr>
+      <tr><td>To or from an airport</td><td class="num">0.4%</td></tr>
+    </table></div>
+    <p class="note">A short trip spends much of its time at lights, getting in and out, and finding a place to stop.</p>
+  </div>
+</section>
+
+<!-- MODEL -->
+<section class="panel" id="p-model" data-tab="model" hidden>
+  <div class="head">
+    <span class="eyebrow">01 · Baselines and 03 · Features</span>
+    <h2>Each part of the model had to earn its place on June</h2>
+    <p class="prose">First, three baselines set the bar. Then feature groups were added one at a time to a logistic regression, and a group stayed only if June’s PR AUC improved. Everything that learns from data (imputing, scaling, one-hot encoding) sits inside a scikit-learn <code>Pipeline</code>, so it is fitted on May only.</p>
+  </div>
+  <div class="card">
+    <h3>The baseline ladder (June)</h3>
+    <div class="scroll"><table>
+      <tr><th>Rung</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">PR AUC</th><th class="num">Lift</th></tr>
+      <tr><td>1. Always predict “no crawl”</td><td class="num">0</td><td class="num">0</td><td class="num">0.190</td><td class="num">1.00</td></tr>
+      <tr><td>2. Rule: pickup 10:00–18:59 in the 10 zones with most crawls in May</td><td class="num">0.445</td><td class="num">0.349</td><td class="num">0.279</td><td class="num">1.47</td></tr>
+      <tr class="hl"><td>3. Decision tree, depth 2 (the bar to beat)</td><td class="num">0.315</td><td class="num">0.833</td><td class="num">0.339</td><td class="num">1.78</td></tr>
+    </table></div>
+    <p class="note">Lift = PR AUC ÷ positive rate: how many times better than guessing. Accuracy is not used: never warning would score 81%.</p>
+  </div>
+  <div class="card">
+    <h3>Feature groups, added one at a time (June PR AUC)</h3>
+    <svg class="chart" id="abl-chart" viewBox="0 0 640 250" role="img" aria-label="June PR AUC of the baseline and of the logistic regression as feature groups are added"></svg>
+    <p class="note">Zones add the most: they carry where the trip happens, which distance and time cannot. Passengers and vendor add 0.002 and were dropped.</p>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Decision tree against logistic regression</h3>
+      <svg class="chart" id="tree-chart" viewBox="0 0 480 240" role="img" aria-label="June PR AUC of decision trees by depth, against the logistic regression"></svg>
+      <p class="note">The tree improves with depth but never reaches the logistic regression. With one column per zone, each split can only separate one zone from all the others.</p>
+    </div>
+    <div class="card">
+      <h3>The final model</h3>
+      <table>
+        <tr><th>Model</th><td>Logistic regression, <code>max_iter=2000</code></td></tr>
+        <tr><th>Numbers</th><td>Distance, log of distance, same-zone flag, airport flag: median imputing, then scaling</td></tr>
+        <tr><th>Categories</th><td>Hour, day of week, pickup zone, drop-off zone: one-hot, zones under 50 May trips grouped as “infrequent”</td></tr>
+        <tr><th>Fitted on</th><td>190,878 May trips</td></tr>
+      </table>
+      <p class="note">The <a href="#try">Try a trip</a> tab runs these exact fitted coefficients in your browser.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TRY -->
+<section class="panel" id="p-try" data-tab="try" hidden>
+  <div class="head">
+    <span class="eyebrow">The fitted model, live</span>
+    <h2>Try a trip</h2>
+    <p class="prose">Pick a pickup and a drop-off, a time and a distance. The probability below is computed with the coefficients of our logistic regression trained on May: on 3,000 June trips it matches scikit-learn’s <code>predict_proba</code> to 15 decimal places.</p>
+  </div>
+  <div class="presets" id="presets">
+    <button type="button" data-p="161,230,15,1,0.7">Midtown Center → Times Sq, Tue 15:00</button>
+    <button type="button" data-p="132,161,17,3,17.3">JFK → Midtown, Thu 17:00</button>
+    <button type="button" data-p="237,236,9,0,1.0">Upper East Side, Mon 09:00</button>
+    <button type="button" data-p="79,148,2,5,0.9">East Village → Lower East Side, Sat 02:00</button>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <label class="ctl" for="t-pu">Pickup zone<select id="t-pu"></select></label>
+      <label class="ctl" for="t-do">Drop-off zone<select id="t-do"></select></label>
+      <div class="grid g2" style="gap:12px;">
+        <label class="ctl" for="t-hour">Pickup hour: <span id="t-hour-v" class="mono">15:00</span><input type="range" id="t-hour" min="0" max="23" step="1" value="15"></label>
+        <label class="ctl" for="t-day">Day of the week<select id="t-day"><option value="0">Monday</option><option value="1" selected>Tuesday</option><option value="2">Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option></select></label>
+      </div>
+      <label class="ctl" for="t-dist">Planned distance: <span id="t-dist-v" class="mono">0.7 mi</span><input type="range" id="t-dist" min="0.1" max="25" step="0.1" value="0.7"></label>
+      <div class="row"><button type="button" class="btn" id="t-typical">Use the typical May distance for this route</button><span class="note" id="t-typical-note"></span></div>
+    </div>
+    <div class="card">
+      <div class="gauge">
+        <span class="eyebrow">Probability of crawling</span>
+        <span class="p" id="t-p">—</span>
+        <div class="bar-track" aria-hidden="true"><div class="bar-fill" id="t-fill"></div><div class="bar-thr" id="t-thr"></div></div>
+        <div class="row"><span class="pill" id="t-warn">—</span><span class="note" id="t-thr-note">Warning threshold 0.30</span></div>
+      </div>
+      <h3 style="margin-top:6px;">Why: what pushes this trip up or down</h3>
+      <div class="contrib" id="t-contrib"></div>
+      <p class="note">Each bar is that feature’s contribution to the log-odds, against the model’s starting point. Orange raises the risk, blue lowers it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- THRESHOLD -->
+<section class="panel" id="p-threshold" data-tab="threshold" hidden>
+  <div class="head">
+    <span class="eyebrow">04 · Evaluate on June</span>
+    <h2>Who gets a warning? Choosing the threshold</h2>
+    <p class="prose">The model gives each trip a probability; the dispatcher warns when it is at least the threshold. A missed crawl and a needless warning cost different amounts, so the threshold comes from the costs, not from 0.5. These curves are computed from the model’s scores on all 190,003 June trips.</p>
+  </div>
+  <div class="card">
+    <div class="grid g2" style="gap:16px;">
+      <label class="ctl" for="th-t">Threshold: <span class="mono" id="th-t-v">0.30</span><input type="range" id="th-t" min="0.01" max="0.99" step="0.01" value="0.30"></label>
+      <label class="ctl" for="th-c">A missed crawl costs <span class="mono" id="th-c-v">3</span>× a needless warning<input type="range" id="th-c" min="1" max="10" step="0.5" value="3"></label>
+    </div>
+    <div class="row"><button type="button" class="btn primary" id="th-best">Set the cheapest threshold</button><span class="note" id="th-best-note"></span></div>
+    <div class="grid g4" style="gap:12px;">
+      <div class="stat"><span class="v" id="th-warn">27.0%</span><span class="l">of passengers warned</span></div>
+      <div class="stat"><span class="v" id="th-rec">0.723</span><span class="l">recall: crawls that got a warning</span></div>
+      <div class="stat"><span class="v" id="th-prec">0.509</span><span class="l">precision: warnings that were right</span></div>
+      <div class="stat"><span class="v" id="th-cost">0.291</span><span class="l">cost per trip (never warn: <span id="th-never">0.571</span>)</span></div>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Precision and recall by threshold</h3>
+      <div class="legend"><span><i style="background:var(--series-1)"></i>Recall</span><span><i style="background:var(--series-2)"></i>Precision</span></div>
+      <svg class="chart" id="pr-chart" viewBox="0 0 480 260" role="img" aria-label="Precision and recall on June as the threshold changes"></svg>
+    </div>
+    <div class="card">
+      <h3>Cost per trip by threshold</h3>
+      <svg class="chart" id="cost-chart" viewBox="0 0 480 280" role="img" aria-label="Cost per trip on June as the threshold changes, for the selected cost ratio"></svg>
+      <p class="note">Our project assumed 3×, which gives 0.30. It is a stated assumption, not a measured cost.</p>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section class="panel" id="p-results" data-tab="results" hidden>
+  <div class="head">
+    <span class="eyebrow">04 · Evaluate</span>
+    <h2>July, scored once: the model holds up</h2>
+    <p class="prose">Features, model and threshold were fixed on June. July was scored a single time, and nothing changed afterwards. Intervals come from 500 bootstrap resamples of July trips.</p>
+  </div>
+  <div class="card scroll">
+    <table>
+      <tr><th></th><th class="num">June (validation)</th><th class="num">July (test, once)</th><th class="num">July 95% interval</th></tr>
+      <tr><td>Crawl rate</td><td class="num">19.0%</td><td class="num">16.8%</td><td class="num">—</td></tr>
+      <tr class="hl"><td>PR AUC, our model</td><td class="num">0.632</td><td class="num">0.627</td><td class="num">0.621–0.632</td></tr>
+      <tr><td>PR AUC, depth-2 tree baseline</td><td class="num">0.339</td><td class="num">0.327</td><td class="num">0.324–0.331</td></tr>
+      <tr><td>Lift</td><td class="num">3.32</td><td class="num">3.73</td><td class="num">3.69–3.77</td></tr>
+      <tr><td>Precision at 0.30</td><td class="num">0.509</td><td class="num">0.465</td><td class="num">0.460–0.469</td></tr>
+      <tr><td>Recall at 0.30</td><td class="num">0.723</td><td class="num">0.779</td><td class="num">0.775–0.784</td></tr>
+      <tr><td>Cost per trip (missed = 3, false alarm = 1)</td><td class="num">0.291</td><td class="num">0.262</td><td class="num">0.259–0.265</td></tr>
+    </table>
+    <p class="note">Lift rises in July only because July has fewer crawls; PR AUC is the figure to compare across months. Precision falls for the same reason: with fewer crawls, a fixed threshold produces more false alarms.</p>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Can the probabilities be trusted? (June)</h3>
+      <div class="legend"><span><i style="background:var(--series-1)"></i>Our model</span><span><i style="background:var(--muted-mark)"></i>Perfectly calibrated</span></div>
+      <svg class="chart" id="rel-chart" viewBox="0 0 420 340" role="img" aria-label="Reliability diagram on June: predicted probability against the share that actually crawled"></svg>
+      <p class="note">Every group sits within about 3 points of the diagonal, slightly over-estimating in the middle.</p>
+    </div>
+    <div class="card">
+      <h3>Where it fails (June, threshold 0.30)</h3>
+      <div class="seg" id="slice-seg" role="group" aria-label="Slice">
+        <button type="button" data-s="hour" aria-pressed="true">Hour</button>
+        <button type="button" data-s="distance" aria-pressed="false">Distance</button>
+        <button type="button" data-s="borough" aria-pressed="false">Borough</button>
+        <button type="button" data-s="other" aria-pressed="false">Other</button>
+      </div>
+      <div class="scroll"><table id="slice-table"></table></div>
+      <p class="note">One threshold for every trip misses most crawls where crawls are rare: at night and on long trips. It is a Manhattan model: 88% of trips start there.</p>
+    </div>
+  </div>
+</section>
+
+<!-- REPRODUCE -->
+<section class="panel" id="p-reproduce" data-tab="reproduce" hidden>
+  <div class="head">
+    <span class="eyebrow">Reproduce</span>
+    <h2>From a fresh clone to every number on this page</h2>
+    <p class="prose">Requires Python 3.11 or newer. The data (about 17 MB) is downloaded by a script and never committed.</p>
+  </div>
+  <pre class="code">git clone &lt;repository URL&gt;
+cd nyc-taxi-crawl
+python -m venv .venv
+.venv\Scripts\Activate.ps1        # Windows
+source .venv/bin/activate         # macOS / Linux
+python -m pip install -r requirements.txt
+python data/get_data.py</pre>
+  <p class="prose">Then open the notebooks in order, each with <b>Restart → Run All</b>. On a laptop the four run in about a minute and a half.</p>
+  <div class="card scroll">
+    <table>
+      <tr><th>File</th><th>What it does</th></tr>
+      <tr><td><code>src/data.py</code></td><td><code>load_trips()</code>: raw file → target, the five rules, the split by month</td></tr>
+      <tr><td><code>src/pipeline.py</code></td><td>Features, feature groups, and the logistic and tree pipelines</td></tr>
+      <tr><td><code>notebooks/01-frame.ipynb</code></td><td>Target, rules with the positive rate, split, baseline ladder</td></tr>
+      <tr><td><code>notebooks/02-clean-and-split.ipynb</code></td><td>Audit, findings and decisions, the zone map and time patterns</td></tr>
+      <tr><td><code>notebooks/03-features.ipynb</code></td><td>Feature groups judged on June, logistic against trees</td></tr>
+      <tr><td><code>notebooks/04-evaluate.ipynb</code></td><td>Threshold from costs, reliability, slices, July once</td></tr>
+      <tr><td><code>PROBLEM.md</code>, <code>MODEL_CARD.md</code></td><td>The problem card and the model card</td></tr>
+      <tr><td><code>docs/</code>, <code>scripts/build_web_data.py</code></td><td>This website. The script rebuilds <code>docs/data.json</code> from <code>load_trips()</code> and the fitted model</td></tr>
+    </table>
+  </div>
+  <p class="note">Team: Diego Jove Villanueva and Carlos del Río de Paz. Data: NYC Taxi &amp; Limousine Commission yellow taxi trip records, as a 600,000-trip sample prepared for the course. We used Claude (Anthropic) as a tutor and assistant, as declared in the README.</p>
+</section>
+
+<p class="loading" id="loading">Loading the data…</p>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function () {
+  const TABS = ["overview", "question", "cleaning", "explore", "model", "try", "threshold", "results", "reproduce"];
+  const $ = (s) => document.querySelector(s);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
+  const fmt = (x) => x.toLocaleString("en-US");
+  const tip = $("#tip");
+  function showTip(e, html) { tip.innerHTML = html; tip.hidden = false; const w = tip.offsetWidth, h = tip.offsetHeight; let x = e.clientX + 14, y = e.clientY + 14; if (x + w > innerWidth - 8) x = e.clientX - w - 14; if (y + h > innerHeight - 8) y = e.clientY - h - 14; tip.style.left = x + "px"; tip.style.top = y + "px"; }
+  function hideTip() { tip.hidden = true; }
+
+  /* ---------- tabs ---------- */
+  function route() {
+    let t = location.hash.replace("#", "");
+    if (!TABS.includes(t)) t = "overview";
+    document.querySelectorAll("section.panel").forEach((s) => (s.hidden = s.dataset.tab !== t));
+    document.querySelectorAll("nav.tabs a").forEach((a) => a.setAttribute("aria-current", a.getAttribute("href") === "#" + t ? "page" : "false"));
+    const active = document.querySelector('nav.tabs a[aria-current="page"]');
+    if (active) active.scrollIntoView({ block: "nearest", inline: "nearest" });
+    window.scrollTo({ top: 0 });
+    if (window.__render) window.__render(t);
+  }
+  addEventListener("hashchange", route);
+  route();
+
+  /* ---------- question: label a trip ---------- */
+  function labelTrip() {
+    const [h1, m1] = $("#q-start").value.split(":").map(Number), [h2, m2] = $("#q-end").value.split(":").map(Number);
+    let dur = (h2 * 60 + m2) - (h1 * 60 + m1); if (isNaN(dur)) return; if (dur < 0) dur += 1440;
+    const dist = parseFloat($("#q-dist").value) || 0;
+    $("#q-dur").textContent = dur + " min";
+    if (dur === 0) { $("#q-speed").textContent = "∞"; $("#q-label").textContent = "—"; $("#q-label-text").textContent = "0 minutes: dropped by the 1-minute rule"; return; }
+    const sp = dist / (dur / 60);
+    $("#q-speed").textContent = sp.toFixed(1) + " mph";
+    const crawl = sp < 6;
+    $("#q-label").textContent = crawl ? "1" : "0";
+    let t = crawl ? "is_crawl: under 6 mph, it crawls" : "is_crawl: 6 mph or more, it does not crawl";
+    if (dist === 0) t = "0 miles: dropped by the distance rule";
+    else if (dur > 120) t = "Over 120 minutes: dropped by the duration rule";
+    else if (sp >= 70) t = "70 mph or more: dropped by the speed rule";
+    $("#q-label-text").textContent = t;
+  }
+  ["#q-start", "#q-end", "#q-dist"].forEach((s) => $(s).addEventListener("input", labelTrip));
+  labelTrip();
+
+  fetch("data.json").then((r) => r.json()).then(init).catch((e) => { console.error(e); $("#loading").textContent = "The data could not be loaded. Reload the page to try again."; });
+
+  function init(D) {
+    $("#loading").hidden = true;
+    const P = D.params, AIRPORTS = new Set(P.airport_zones);
+    const lookup = D.lookup;
+    const zoneName = (id) => lookup[id] ? lookup[id][1] + " (" + lookup[id][0] + ")" : "Zone " + id;
+
+    /* ---------- cleaning ---------- */
+    const boxes = [...document.querySelectorAll("#rules input")];
+    function cleaning() {
+      const key = boxes.map((b) => (b.checked ? "1" : "0")).join("");
+      const [n, rate] = D.combos[key], [nAll, rAll] = D.combos["11111"];
+      $("#c-kept").textContent = fmt(n);
+      $("#c-rate").textContent = pct(rate);
+      const svg = d3.select("#c-chart"); svg.selectAll("*").remove();
+      const x = d3.scaleLinear().domain([0, 0.25]).range([150, 440]);
+      const rows = [["Your selection", rate, "var(--series-1)"], ["All five rules", rAll, "var(--muted-mark)"]];
+      rows.forEach(([lab, v, c], i) => {
+        const y = 22 + i * 56;
+        svg.append("text").attr("x", 0).attr("y", y + 20).text(lab).style("font-size", "13px").style("fill", "var(--ink-2)");
+        svg.append("rect").attr("x", 150).attr("y", y).attr("width", Math.max(2, x(v) - 150)).attr("height", 28).attr("rx", 4).style("fill", c);
+        svg.append("text").attr("x", x(v) + 8).attr("y", y + 19).text(pct(v)).style("font-size", "13px").style("fill", "var(--ink)").style("font-family", "var(--font-mono)");
+      });
+      svg.append("text").attr("x", 150).attr("y", 140).text("share of kept trips labelled as crawls").style("font-size", "12px");
+      const off = boxes.filter((b) => !b.checked).length;
+      $("#c-msg").textContent = off === 0 ? "All five rules on: this is the data the model is trained and judged on." :
+        `${fmt(n - nAll)} more trips than with all rules, and the crawl rate moves by ${((rate - rAll) * 100).toFixed(1)} points. Those extra labels come from speeds that cannot be trusted.`;
+    }
+    boxes.forEach((b) => b.addEventListener("change", cleaning));
+    cleaning();
+
+    /* ---------- model: prediction ---------- */
+    function contributions(pu, dO, hour, day, dist) {
+      const feats = { trip_distance: dist, log_distance: Math.log1p(dist), same_zone: pu === dO ? 1 : 0, airport_trip: AIRPORTS.has(pu) || AIRPORTS.has(dO) ? 1 : 0 };
+      const num = {}; for (const [c, p] of Object.entries(P.numeric)) num[c] = (feats[c] - p.mean) / p.scale * p.coef;
+      const cat = (c, v) => { const p = P.categorical[c]; const k = String(v); return k in p.values ? p.values[k] : p.other; };
+      return [
+        ["Distance", num.trip_distance + num.log_distance],
+        ["Pickup zone", cat("PULocationID", pu)],
+        ["Drop-off zone", cat("DOLocationID", dO)],
+        ["Hour", cat("hour", hour)],
+        ["Day of week", cat("day_of_week", day)],
+        ["Same zone / airport", num.same_zone + num.airport_trip],
+      ];
+    }
+    function predict(pu, dO, hour, day, dist) {
+      const parts = contributions(pu, dO, hour, day, dist);
+      const z = P.intercept + parts.reduce((s, p) => s + p[1], 0);
+      return { p: 1 / (1 + Math.exp(-z)), parts };
+    }
+
+    /* ---------- try a trip ---------- */
+    const ids = Object.keys(lookup).map(Number).sort((a, b) => (lookup[a][0] + lookup[a][1]).localeCompare(lookup[b][0] + lookup[b][1]));
+    for (const sel of ["#t-pu", "#t-do"]) {
+      const el = $(sel); let group = null, og;
+      ids.forEach((id) => { const [b, z] = lookup[id]; if (b !== group) { og = document.createElement("optgroup"); og.label = b; el.appendChild(og); group = b; } const o = document.createElement("option"); o.value = id; o.textContent = z + " · " + id; og.appendChild(o); });
+    }
+    let THRESHOLD = 0.30;
+    const set = (pu, dO, h, d, dist) => { $("#t-pu").value = pu; $("#t-do").value = dO; $("#t-hour").value = h; $("#t-day").value = d; $("#t-dist").value = dist; tryTrip(); };
+    function typical() { const k = $("#t-pu").value + "-" + $("#t-do").value; return D.pairs[k]; }
+    function tryTrip() {
+      const pu = +$("#t-pu").value, dO = +$("#t-do").value, h = +$("#t-hour").value, d = +$("#t-day").value, dist = +$("#t-dist").value;
+      $("#t-hour-v").textContent = String(h).padStart(2, "0") + ":00";
+      $("#t-dist-v").textContent = dist.toFixed(1) + " mi";
+      const r = predict(pu, dO, h, d, dist);
+      $("#t-p").textContent = r.p.toFixed(2);
+      $("#t-fill").style.width = (r.p * 100) + "%";
+      $("#t-thr").style.left = (THRESHOLD * 100) + "%";
+      const warn = r.p >= THRESHOLD;
+      const w = $("#t-warn"); w.className = "pill " + (warn ? "no" : "yes"); w.textContent = warn ? "Warn the passenger: likely to crawl" : "No warning";
+      $("#t-thr-note").textContent = "Warning threshold " + THRESHOLD.toFixed(2);
+      const t = typical(); $("#t-typical").disabled = !t; $("#t-typical-note").textContent = t ? `Median in May: ${t} mi` : "Fewer than 10 May trips on this route";
+      const max = Math.max(1.5, ...r.parts.map((p) => Math.abs(p[1])));
+      $("#t-contrib").innerHTML = r.parts.map(([lab, v]) => {
+        const wpx = Math.abs(v) / max * 50, left = v >= 0 ? 50 : 50 - wpx;
+        return `<div class="r"><span>${lab}</span><div class="lane"><div class="mid"></div><div class="b" style="left:${left}%;width:${wpx}%;background:${v >= 0 ? "var(--pos)" : "var(--neg)"}"></div></div><span class="v">${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}</span></div>`;
+      }).join("");
+    }
+    ["#t-pu", "#t-do", "#t-hour", "#t-day", "#t-dist"].forEach((s) => $(s).addEventListener("input", tryTrip));
+    $("#t-typical").addEventListener("click", () => { const t = typical(); if (t) { $("#t-dist").value = t; tryTrip(); } });
+    document.querySelectorAll("#presets button").forEach((b) => b.addEventListener("click", () => { const [pu, dO, h, d, dist] = b.dataset.p.split(",").map(Number); set(pu, dO, h, d, dist); }));
+    set(161, 230, 15, 1, 0.7);
+
+    /* ---------- threshold ---------- */
+    const C = D.curve; // [t, tp, fp, fn, tn]
+    const N = D.june.n, POS = D.june.pos;
+    function stats(row, ratio) { const [t, tp, fp, fn] = row; return { t, warned: (tp + fp) / N, rec: tp / POS, prec: tp + fp ? tp / (tp + fp) : null, cost: (ratio * fn + fp) / N }; }
+    function cheapest(ratio) { let best = null; C.forEach((r) => { const s = stats(r, ratio); if (!best || s.cost < best.cost) best = s; }); return best; }
+    function threshold() {
+      const t = +$("#th-t").value, ratio = +$("#th-c").value;
+      THRESHOLD = t;
+      $("#th-t-v").textContent = t.toFixed(2); $("#th-c-v").textContent = ratio;
+      const row = C.find((r) => Math.abs(r[0] - t) < 1e-9) || C[29];
+      const s = stats(row, ratio);
+      $("#th-warn").textContent = pct(s.warned); $("#th-rec").textContent = s.rec.toFixed(3); $("#th-prec").textContent = s.prec == null ? "—" : s.prec.toFixed(3); $("#th-cost").textContent = s.cost.toFixed(3);
+      $("#th-never").textContent = (ratio * POS / N).toFixed(3);
+      const b = cheapest(ratio); $("#th-best-note").textContent = `Cheapest for ${ratio}×: ${b.t.toFixed(2)} (cost ${b.cost.toFixed(3)})`;
+      drawThreshold(t, ratio);
+      tryTrip();
+    }
+    $("#th-t").addEventListener("input", threshold); $("#th-c").addEventListener("input", threshold);
+    $("#th-best").addEventListener("click", () => { $("#th-t").value = cheapest(+$("#th-c").value).t.toFixed(2); threshold(); });
+
+    function axes(svg, x, y, W, H, m, xl, yl, yfmt) {
+      svg.append("g").attr("class", "grid").selectAll("line").data(y.ticks(5)).join("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", (d) => y(d)).attr("y2", (d) => y(d));
+      svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(6).tickSizeOuter(0)).call((g) => g.select(".domain").remove());
+      svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(yfmt).tickSize(0)).call((g) => g.select(".domain").remove());
+      if (xl) svg.append("text").attr("x", (m.l + W - m.r) / 2).attr("y", H - 4).attr("text-anchor", "middle").text(xl);
+      if (yl) svg.append("text").attr("x", m.l).attr("y", 12).text(yl);
+    }
+    function drawThreshold(t, ratio) {
+      const W = 480, H = 260, m = { l: 44, r: 16, t: 22, b: 38 };
+      let svg = d3.select("#pr-chart"); svg.selectAll("*").remove();
+      const x = d3.scaleLinear().domain([0, 1]).range([m.l, W - m.r]), y = d3.scaleLinear().domain([0, 1]).range([H - m.b, m.t]);
+      axes(svg, x, y, W, H, m, "threshold", "", d3.format(".1f"));
+      const S = C.map((r) => stats(r, ratio));
+      [["rec", "var(--series-1)", "Recall"], ["prec", "var(--series-2)", "Precision"]].forEach(([k, c, lab]) => {
+        svg.append("path").datum(S).style("fill", "none").style("stroke", c).attr("stroke-width", 2).attr("d", d3.line().defined((d) => d[k] != null).x((d) => x(d.t)).y((d) => y(d[k])));
+      });
+      const cur = stats(C.find((r) => Math.abs(r[0] - t) < 1e-9) || C[29], ratio);
+      svg.append("line").attr("x1", x(t)).attr("x2", x(t)).attr("y1", m.t).attr("y2", H - m.b).style("stroke", "var(--ink)").attr("stroke-dasharray", "3 3");
+      [["rec", "var(--series-1)"], ["prec", "var(--series-2)"]].filter(([k]) => cur[k] != null).forEach(([k, c]) => svg.append("circle").attr("cx", x(t)).attr("cy", y(cur[k])).attr("r", 5).style("fill", c).style("stroke", "var(--surface)").attr("stroke-width", 2));
+      hover(svg, x, m, W, H, S, (d) => `Threshold <b>${d.t.toFixed(2)}</b><br>Recall ${d.rec.toFixed(3)}<br>Precision ${d.prec == null ? "— (no warnings)" : d.prec.toFixed(3)}<br>Warned ${pct(d.warned)}`);
+
+      svg = d3.select("#cost-chart"); svg.selectAll("*").remove();
+      const H2 = 280;
+      const maxC = Math.max(...S.map((d) => d.cost));
+      const y2 = d3.scaleLinear().domain([0, maxC * 1.05]).range([H2 - m.b, m.t]);
+      axes(svg, x, y2, W, H2, m, "threshold", "cost per trip", d3.format(".2f"));
+      svg.append("path").datum(S).style("fill", "none").style("stroke", "var(--series-1)").attr("stroke-width", 2).attr("d", d3.line().x((d) => x(d.t)).y((d) => y2(d.cost)));
+      const best = cheapest(ratio);
+      svg.append("circle").attr("cx", x(best.t)).attr("cy", y2(best.cost)).attr("r", 6).style("fill", "var(--taxi)").style("stroke", "var(--surface)").attr("stroke-width", 2);
+      svg.append("text").attr("x", x(best.t) + 8).attr("y", y2(best.cost) + 18).text("cheapest " + best.t.toFixed(2)).style("fill", "var(--ink-2)");
+      svg.append("line").attr("x1", x(t)).attr("x2", x(t)).attr("y1", m.t).attr("y2", H2 - m.b).style("stroke", "var(--ink)").attr("stroke-dasharray", "3 3");
+      hover(svg, x, m, W, H2, S, (d) => `Threshold <b>${d.t.toFixed(2)}</b><br>Cost per trip ${d.cost.toFixed(3)}`);
+    }
+    function hover(svg, x, m, W, H, S, html) {
+      const g = svg.append("line").attr("y1", m.t).attr("y2", H - m.b).style("stroke", "var(--ink-3)").attr("opacity", 0);
+      svg.append("rect").attr("x", m.l).attr("y", m.t).attr("width", W - m.l - m.r).attr("height", H - m.t - m.b).style("fill", "transparent")
+        .on("mousemove", (e) => { const [mx] = d3.pointer(e); const t = x.invert(mx); const d = S.reduce((a, b) => (Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a)); g.attr("x1", x(d.t)).attr("x2", x(d.t)).attr("opacity", 1); showTip(e, html(d)); })
+        .on("mouseleave", () => { g.attr("opacity", 0); hideTip(); });
+    }
+    threshold();
+
+    /* ---------- explore: map ---------- */
+    let band = "all", selected = null;
+    const geo = D.geo;
+    const projection = d3.geoMercator().fitExtent([[10, 10], [790, 750]], geo);
+    const path = d3.geoPath(projection);
+    const BINS = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35];
+    function colorFor(rate) { let i = BINS.findIndex((b) => rate < b); if (i === -1) i = 7; return "var(--seq-" + i + ")"; }
+    const mapSvg = d3.select("#map");
+    const zonesSel = mapSvg.append("g").selectAll("path").data(geo.features).join("path").attr("class", "zone").attr("d", path)
+      .on("mousemove", (e, f) => { const s = (D.zones[f.properties.id] || {})[band]; const lab = s && s[0] >= 100 ? `${pct(s[1])} crawl · ${fmt(s[0])} May pickups` : s ? `Only ${fmt(s[0])} May pickups: too few` : "No May pickups"; showTip(e, `<b>${f.properties.zone}</b><br>${f.properties.borough} · zone ${f.properties.id}<br>${lab}`); })
+      .on("mouseleave", hideTip)
+      .on("click", (e, f) => { selected = f.properties.id; zonesSel.classed("sel", (g) => g.properties.id === selected); $("#map-sel").innerHTML = `Selected: <b>${f.properties.zone}</b>. <a href="#try" id="use-zone">Use as pickup in Try a trip</a>`; $("#use-zone").addEventListener("click", () => { $("#t-pu").value = selected; const t = typical(); if (t) $("#t-dist").value = t; tryTrip(); }); });
+    function paintMap() {
+      zonesSel.style("fill", (f) => { const s = (D.zones[f.properties.id] || {})[band]; return s && s[0] >= 100 ? colorFor(s[1]) : "var(--none)"; });
+    }
+    const labels = ["<5%", "5–10", "10–15", "15–20", "20–25", "25–30", "30–35", "35%+"];
+    $("#map-key").innerHTML = labels.map((l, i) => `<div><i style="background:var(--seq-${i})"></i>${l}</div>`).join("") + `<div style="margin-left:12px;"><i style="background:var(--none)"></i>too few</div>`;
+    document.querySelectorAll("#band button").forEach((b) => b.addEventListener("click", () => { band = b.dataset.b; document.querySelectorAll("#band button").forEach((x) => x.setAttribute("aria-pressed", x === b)); paintMap(); }));
+    paintMap();
+
+    /* ---------- explore: time charts ---------- */
+    function lineChart(sel, key, xs, xfmt) {
+      const W = 480, H = 260, m = { l: 44, r: 16, t: 18, b: 34 };
+      const svg = d3.select(sel); svg.selectAll("*").remove();
+      const series = [["May", D.time.may[key], "var(--series-1)"], ["June", D.time.june[key], "var(--series-2)"]];
+      const x = key === "hour" ? d3.scaleLinear().domain([0, 23]).range([m.l, W - m.r]) : d3.scaleBand().domain(d3.range(7)).range([m.l, W - m.r]).padding(0.25);
+      const y = d3.scaleLinear().domain([0, 0.35]).range([H - m.b, m.t]);
+      svg.append("g").attr("class", "grid").selectAll("line").data(y.ticks(5)).join("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", (d) => y(d)).attr("y2", (d) => y(d));
+      svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")).tickSize(0)).call((g) => g.select(".domain").remove());
+      if (key === "hour") {
+        svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickValues([0, 3, 6, 9, 12, 15, 18, 21]).tickFormat((d) => String(d).padStart(2, "0") + ":00").tickSizeOuter(0));
+        series.forEach(([n, s, c]) => svg.append("path").datum(s).style("fill", "none").style("stroke", c).attr("stroke-width", 2).attr("d", d3.line().x((d) => x(d[0])).y((d) => y(d[2]))));
+        const g = svg.append("line").attr("y1", m.t).attr("y2", H - m.b).style("stroke", "var(--ink-3)").attr("opacity", 0);
+        svg.append("rect").attr("x", m.l).attr("y", m.t).attr("width", W - m.l - m.r).attr("height", H - m.t - m.b).style("fill", "transparent")
+          .on("mousemove", (e) => { const hr = Math.max(0, Math.min(23, Math.round(x.invert(d3.pointer(e)[0])))); g.attr("x1", x(hr)).attr("x2", x(hr)).attr("opacity", 1); showTip(e, `<b>${String(hr).padStart(2, "0")}:00</b><br>May ${pct(series[0][1][hr][2])}<br>June ${pct(series[1][1][hr][2])}`); })
+          .on("mouseleave", () => { g.attr("opacity", 0); hideTip(); });
+      } else {
+        const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickFormat((d) => names[d]).tickSizeOuter(0));
+        const bw = x.bandwidth() / 2 - 1;
+        series.forEach(([n, s, c], k) => svg.append("g").selectAll("rect").data(s).join("rect")
+          .attr("x", (d) => x(d[0]) + k * (bw + 2)).attr("width", bw).attr("y", (d) => y(d[2])).attr("height", (d) => y(0) - y(d[2])).attr("rx", 3).style("fill", c)
+          .on("mousemove", (e, d) => showTip(e, `<b>${names[d[0]]}, ${n}</b><br>${pct(d[2])} crawl · ${fmt(d[1])} trips`)).on("mouseleave", hideTip));
+      }
+    }
+    lineChart("#hour-chart", "hour"); lineChart("#day-chart", "day");
+
+    /* ---------- model charts ---------- */
+    function hbars(sel, rows, W, H, maxV) {
+      const m = { l: 200, r: 110, t: 8, b: 26 };
+      const svg = d3.select(sel); svg.selectAll("*").remove();
+      const x = d3.scaleLinear().domain([0, maxV]).range([m.l, W - m.r]);
+      const y = d3.scaleBand().domain(rows.map((r) => r[0])).range([m.t, H - m.b]).padding(0.3);
+      svg.append("g").attr("class", "grid").selectAll("line").data(x.ticks(4)).join("line").attr("y1", m.t).attr("y2", H - m.b).attr("x1", (d) => x(d)).attr("x2", (d) => x(d));
+      svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(4).tickSizeOuter(0)).call((g) => g.select(".domain").remove());
+      rows.forEach(([lab, v, c, note]) => {
+        svg.append("text").attr("x", m.l - 10).attr("y", y(lab) + y.bandwidth() / 2 + 4).attr("text-anchor", "end").text(lab).style("fill", "var(--ink-2)").style("font-size", "13px");
+        svg.append("rect").attr("x", m.l).attr("y", y(lab)).attr("width", x(v) - m.l).attr("height", y.bandwidth()).attr("rx", 4).style("fill", c)
+          .on("mousemove", (e) => showTip(e, `<b>${lab}</b><br>June PR AUC ${v.toFixed(3)}${note ? "<br>" + note : ""}`)).on("mouseleave", hideTip);
+        svg.append("text").attr("x", x(v) + 8).attr("y", y(lab) + y.bandwidth() / 2 + 4).text(v.toFixed(3) + (note ? " · " + note : "")).style("fill", "var(--ink)").style("font-size", "12.5px").style("font-family", "var(--font-mono)");
+      });
+    }
+    hbars("#abl-chart", [
+      ["Baseline: tree, depth 2", 0.339, "var(--muted-mark)", ""],
+      ["Distance", 0.445, "var(--series-1)", ""],
+      ["+ Hour and day", 0.495, "var(--series-1)", ""],
+      ["+ Zones", 0.632, "var(--series-1)", "kept"],
+      ["+ Passengers, vendor", 0.634, "var(--muted-mark)", "dropped"],
+    ], 640, 250, 0.7);
+    (function treeChart() {
+      const W = 480, H = 240, m = { l: 44, r: 20, t: 18, b: 38 };
+      const svg = d3.select("#tree-chart"); svg.selectAll("*").remove();
+      const pts = [[2, 0.339], [4, 0.404], [8, 0.480], [12, 0.528], [16, 0.558], [20, 0.574]];
+      const x = d3.scaleLinear().domain([0, 22]).range([m.l, W - m.r]), y = d3.scaleLinear().domain([0.3, 0.7]).range([H - m.b, m.t]);
+      axes(svg, x, y, W, H, m, "tree depth", "", d3.format(".2f"));
+      svg.append("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(0.632)).attr("y2", y(0.632)).style("stroke", "var(--series-2)").attr("stroke-width", 2).attr("stroke-dasharray", "6 4");
+      svg.append("text").attr("x", W - m.r).attr("y", y(0.632) - 8).attr("text-anchor", "end").text("logistic regression 0.632").style("fill", "var(--ink-2)");
+      svg.append("path").datum(pts).style("fill", "none").style("stroke", "var(--series-1)").attr("stroke-width", 2).attr("d", d3.line().x((d) => x(d[0])).y((d) => y(d[1])));
+      svg.append("g").selectAll("circle").data(pts).join("circle").attr("cx", (d) => x(d[0])).attr("cy", (d) => y(d[1])).attr("r", 5).style("fill", "var(--series-1)").style("stroke", "var(--surface)").attr("stroke-width", 2)
+        .on("mousemove", (e, d) => showTip(e, `<b>Tree, depth ${d[0]}</b><br>June PR AUC ${d[1].toFixed(3)}`)).on("mouseleave", hideTip);
+      svg.append("text").attr("x", x(20) - 4).attr("y", y(0.574) + 20).attr("text-anchor", "end").text("tree 0.574").style("fill", "var(--ink-2)");
+    })();
+
+    /* ---------- results: reliability ---------- */
+    (function rel() {
+      const W = 420, H = 340, m = { l: 48, r: 16, t: 16, b: 40 };
+      const pts = [[0.001, 0.000], [0.007, 0.004], [0.023, 0.017], [0.049, 0.039], [0.087, 0.075], [0.141, 0.126], [0.218, 0.192], [0.326, 0.293], [0.474, 0.449], [0.715, 0.709]];
+      const svg = d3.select("#rel-chart"); svg.selectAll("*").remove();
+      const x = d3.scaleLinear().domain([0, 0.8]).range([m.l, W - m.r]), y = d3.scaleLinear().domain([0, 0.8]).range([H - m.b, m.t]);
+      axes(svg, x, y, W, H, m, "predicted probability", "", d3.format(".1f"));
+      svg.append("text").attr("x", m.l).attr("y", 10).text("share that crawled");
+      svg.append("line").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(0.8)).attr("y2", y(0.8)).style("stroke", "var(--muted-mark)").attr("stroke-width", 2).attr("stroke-dasharray", "5 4");
+      svg.append("path").datum(pts).style("fill", "none").style("stroke", "var(--series-1)").attr("stroke-width", 2).attr("d", d3.line().x((d) => x(d[0])).y((d) => y(d[1])));
+      svg.append("g").selectAll("circle").data(pts).join("circle").attr("cx", (d) => x(d[0])).attr("cy", (d) => y(d[1])).attr("r", 5).style("fill", "var(--series-1)").style("stroke", "var(--surface)").attr("stroke-width", 2)
+        .on("mousemove", (e, d) => showTip(e, `Predicted <b>${pct(d[0])}</b><br>Actually crawled ${pct(d[1])}`)).on("mouseleave", hideTip);
+    })();
+
+    /* ---------- results: slices ---------- */
+    const SLICES = {
+      hour: [["00–06", 22622, 0.034, 0.254, 0.131], ["07–09", 20978, 0.145, 0.487, 0.590], ["10–18", 92987, 0.281, 0.521, 0.816], ["19–23", 53416, 0.118, 0.465, 0.474]],
+      distance: [["Under 0.5 miles", 9546, 0.574, 0.661, 0.868], ["2–4 miles", 45728, 0.110, 0.421, 0.338], ["Over 4 miles", 44839, 0.007, 0.263, 0.032]],
+      borough: [["Pickup in Manhattan", 168126, 0.213, 0.512, 0.725], ["Pickup in Brooklyn", 5213, 0.046, 0.318, 0.550], ["Pickup in Queens", 15727, 0.008, 0.420, 0.468]],
+      other: [["All trips", 190003, 0.190, 0.509, 0.723], ["Weekday", 138584, 0.215, 0.523, 0.775], ["Weekend", 51419, 0.124, 0.424, 0.482], ["Flex fare", 48170, 0.121, 0.558, 0.602], ["Not flex", 141833, 0.214, 0.502, 0.746]],
+    };
+    function slices(k) {
+      const rows = SLICES[k];
+      $("#slice-table").innerHTML = `<tr><th>Group</th><th class="num">Trips</th><th class="num">Crawl rate</th><th class="num">Precision</th><th class="num">Recall</th></tr>` +
+        rows.map((r) => `<tr${r[4] < 0.4 ? ' class="hl"' : ""}><td>${r[0]}${r[4] < 0.4 ? ' <span class="pill no">weak</span>' : ""}</td><td class="num">${fmt(r[1])}</td><td class="num">${pct(r[2])}</td><td class="num">${r[3].toFixed(3)}</td><td class="num">${r[4].toFixed(3)}</td></tr>`).join("");
+    }
+    document.querySelectorAll("#slice-seg button").forEach((b) => b.addEventListener("click", () => { document.querySelectorAll("#slice-seg button").forEach((x) => x.setAttribute("aria-pressed", x === b)); slices(b.dataset.s); }));
+    slices("hour");
+  }
+})();
+</script>
+</body>
+</html>
